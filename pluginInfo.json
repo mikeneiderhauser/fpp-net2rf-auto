@@ -1,0 +1,35 @@
+{
+    "repoName": "fpp-net2rf",
+    "name": "Net2RF Bracelet Follow",
+    "author": "Mike Neiderhauser",
+    "description": "Drives a Net2RF bracelet controller from the colours of your other props: each controller zone follows one or more FPP models (average, dominant, brightest or one pixel), smoothed and rate-limited to suit the radio, sent over DDP.",
+    "homeURL": "https://github.com/mikeneiderhauser/fpp-net2rf",
+    "srcURL": "https://github.com/mikeneiderhauser/fpp-net2rf.git",
+    "bugURL": "https://github.com/mikeneiderhauser/fpp-net2rf/issues",
+    "allowUpdates": 1,
+    "versions": [
+        {
+            "minFPPVersion": "10.3",
+            "maxFPPVersion": "0",
+            "branch": "main",
+            "sha": ""
+        }
+    ],
+    "privacy": {
+        "summary": "Sends colour data (DDP) to the one Net2RF controller you set, on your network. Nothing else leaves this device.",
+        "sends": [
+            {
+                "to": "the Net2RF controller address you enter",
+                "what": "the zone colours, as DDP packets",
+                "why": "that is how the controller is driven",
+                "alwaysOn": false
+            }
+        ],
+        "collects": [],
+        "sensors": [],
+        "remoteAccess": "none",
+        "systemChanges": [],
+        "closedCode": false,
+        "other": "Settings are kept in config/plugin.fpp-net2rf.json under /home/fpp/media and are not removed on uninstall."
+    }
+}

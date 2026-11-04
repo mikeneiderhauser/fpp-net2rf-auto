@@ -1,0 +1,4 @@
+*.o
+*.so
+test/test_zone_logic
+test/test_controller_check
