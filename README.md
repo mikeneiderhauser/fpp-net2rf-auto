@@ -1,10 +1,10 @@
-# fpp-net2rf: Net2RF Bracelet Follow
+# fpp-net2rf: Net2RF Auto Mode
 
 An FPP 10.3+ plugin that drives a [Net2RF](https://github.com/mikeneiderhauser/net2rf-led) bracelet controller from
 the colours of your other props, with no bracelet sequencing.
 
-Each controller zone follows one or more FPP models. Every frame, after overlays and just before outputs are sent,
-the plugin:
+Each controller zone follows one or more FPP models. Every frame while a sequence plays, after overlays and just
+before outputs are sent, the plugin does the following for each zone that is on and has props:
 
 1. **Reduces** each zone's models to one colour:
    - **average**: of the lit pixels, by default, so a chase on a dark prop gives the chase's colour, not a dim one;
@@ -19,6 +19,36 @@ the plugin:
      shift. On *Auto* it follows the controller's repeats and coverage group (see *Radio budget*).
 4. **Hands** the zones' colours to the controller, one of two ways (below).
 
+Nothing runs while FPP is idle, even when FPP keeps its outputs going (overlay models, effects, bridged input,
+*Always transmit*): the plugin reads no props and, in the direct connection, sends nothing. When playback stops (or
+the plugin is disabled), the direct connection sends the zones it was colouring as off, once, 3 s later: long
+enough that the gap between two sequences of a playlist doesn't flash the devices off. With the controller model,
+FPP's own output blanks them with the sequence.
+
+Each zone can be switched **off** without losing its props. A zone that is off, or has no props, isn't read, gated
+or sent: with the controller model it keeps the sequence's colour; direct, it isn't sent at all (the plugin sends
+one DDP packet per run of zones that are on), so the controller holds its last colour.
+
+## FPP commands
+
+For playlists (a *Command* entry), the scheduler, command presets, buttons or the API:
+
+| Command | Arguments | What it does |
+|---|---|---|
+| **Net2RF Auto Mode Enable** / **Disable** | — | Switch the plugin's processing on or off. Same as the page's *Enabled* box, and saved. |
+| **Net2RF All Off** | — | Switch every device off and leave test mode (`POST /api/all-off` on the controller). Devices stay off until a colour changes. |
+| **Net2RF RF Output** | Output On (on/off) | The controller's radio output (`POST /api/output`), saved on the controller. Off: it still takes the show data, but transmits nothing. |
+| **Net2RF Color - Test Mode** | Mode (solid, cycle, fade, flicker, off), Color | Override the show on the controller (`POST /api/test`): a solid colour, a colour cycle, the controller's fade palette, or a candle flicker in the colour. **off** goes back to the show. |
+
+The last three go to the controller the plugin is set up for (the controller model's FPP output, or the direct
+address) and work whether or not the plugin is enabled. They're sent in the background, so a playlist never waits
+on the network; the result shows under the setup check (*Last controller command*) and in the plugin log. With a
+controller that has an admin password, enter it under **Controller Password** first, otherwise they're refused.
+
+The password is kept in `plugindata/fpp-net2rf/controller.json` (mode 0600), not with the settings: FPP's backups
+and crash reports copy `config/`. It is never shown again or logged, and it goes to the controller as HTTP Basic
+auth, which isn't encrypted, so use it only on your own network.
+
 ## Radio budget
 
 One change costs about 140 ms of airtime at 3 repeats, so a controller fits about 7 changes a second at most (see
@@ -29,8 +59,10 @@ controller's settings each time it runs and sets the rate to use *Airtime* % of 
   slows it down (2 controllers ~8/s at 100%, 4 ~4.5/s);
 - a zone on both device protocols sends each change twice, which halves the rate.
 
-The repeats come from `/api/config`, or from the last transmission in `/api/tools` when an admin password blocks
-it; the group from `/api/status`. Until the controller has been read, the factory default (3 repeats) is assumed.
+The repeats come from `/api/config`; behind an admin password, from `/api/stats` or the heartbeat (firmware 0.2.1+),
+else the last transmission in `/api/tools`. The group comes from `/api/status`, else the heartbeat. On 0.2.1+, a
+heartbeat showing new repeats or a remote joining or dropping out re-reads the controller at once. Until the
+controller has been read, the factory default (3 repeats) is assumed.
 The check also flags a controller that is a coverage group **remote** (send to its master instead), a manual rate
 above what the radio fits, and a full channel (`lbt_forced` above 2% of the changes).
 
@@ -62,6 +94,9 @@ when there's no admin password, `/json/cfg`, `/api/tools`, `/api/stats`) and lis
   DDP or E1.31 output carries it, and the node count matches the zone rows. The controller's expected start
   channel follows from the output: a one-based DDP output counts from its own first channel, a raw one from
   FPP channel 1.
+- The controller's firmware: older than **0.2.0** is an error (the other checks and the automatic rate may be
+  wrong; the plugin still sends, so a show isn't cut off), 0.2.0 notes what 0.2.1 adds, and an untagged
+  development build can't be checked. *Found on the network* marks a controller that is too old.
 - Then the controller: DDP on and the right port (DDP only), pixel mode, zone count, start channel, colour order,
   another sender, output off, test mode and the radio.
 - In direct mode it also warns when an FPP output sends to the same controller.
@@ -69,9 +104,30 @@ when there's no admin password, `/json/cfg`, `/api/tools`, `/api/stats`) and lis
 ## Install
 
 In FPP's Plugin Manager, install from the repo URL. It builds on the player (`make`) against that FPP's headers.
-The settings page is under **Content Setup → Net2RF Bracelet Follow**.
+The settings page is under **Content Setup → Net2RF Auto Mode**.
+
+While disabled, the plugin doesn't touch the network: it listens for controller broadcasts and runs the setup check
+only while it is enabled or its settings page is open (and for 2 minutes after the page was last open).
+
+Runtime messages (settings saves, Enable/Disable commands, errors) go to `logs/plugin-fpp-net2rf.log`, which FPP
+rotates with its other plugin logs.
+
+### Uninstalling
+
+Uninstalling removes the plugin's files. Your settings are kept, as FPP keeps plugin settings, so a Reinstall (or
+FPP's **Reinstall All** after an OS upgrade, which on FPP 10.3 and earlier can't be told apart from an uninstall)
+picks them up again. To remove them too, delete them after uninstalling:
+
+```bash
+rm -f /home/fpp/media/config/plugin.fpp-net2rf.json
+rm -f /home/fpp/media/logs/plugin-fpp-net2rf.log*
+rm -rf /home/fpp/media/plugindata/fpp-net2rf    # the controller password, if you set one
+```
 
 ## API
+
+The routes are documented on FPP's own API page too (`apiDocs.json`).
+
 
 - `GET /api/plugin-apis/net2rf/config`, `POST` the same to replace it. It's stored in
   `config/plugin.fpp-net2rf.json`.
@@ -89,5 +145,7 @@ The settings page is under **Content Setup → Net2RF Bracelet Follow**.
   - `modifyChannelData`;
   - model lookup through `PixelOverlayManager::getModelShared`;
   - the HTTP API;
-  - two threads, joined in `shutdown()`: one finds the controller and runs the setup check, one listens for heartbeats.
+  - two threads, joined in `shutdown()`: one finds the controller and runs the setup check (reading FPP's outputs
+    through `/api/channel/output/universeOutputs`), one listens for heartbeats. Both stay off the network while the
+    plugin is disabled and its page is closed.
 - `net2rf.php`: the settings page, with live swatches for each zone.

@@ -163,6 +163,39 @@ int main() {
     r["items"] = checkAirtime(at, parse(R"({"output":{"lbt_checks":1000,"lbt_forced":80}})"), 50, false, 9);
     CHECK(has(r, "warn", "more than the radio fits") && has(r, "warn", "channel is full"));
 
+    // heartbeat budget fields (0.2.1): only a master's remotes and copies count
+    CHECK(parseHeartbeat(parse(R"({"p":"net2rf","v":1,"id":"24DB","fw":"0.2.1","rep":2,"sync":true,"master":true,"rem":3,"cp":2})"), "10.0.0.5", 0, f));
+    CHECK(f.repeats == 2 && f.remotes == 3 && f.copies == 2);
+    Found hb;
+    CHECK(parseHeartbeat(parse(R"({"p":"net2rf","v":1,"id":"24DB","rep":5,"rem":3})"), "10.0.0.5", 0, hb));
+    CHECK(hb.repeats == 5 && hb.remotes == 0);
+
+    // repeats behind an admin password: /api/stats (0.2.1) beats the heartbeat, which beats /api/tools
+    at = parseAirtime(Json::Value(), parse(R"({"tx":[{"n":1}]})"), Json::Value(), parse(R"({"repeats":4})"), &hb);
+    CHECK(at.known && at.repeats == 4);
+    at = parseAirtime(Json::Value(), parse(R"({"tx":[{"n":1}]})"), Json::Value(), Json::Value(), &hb);
+    CHECK(at.repeats == 5);
+    // the group from the heartbeat when /api/status didn't answer: 15 + 4 x (2 x 46.6 + 8) ms
+    at = parseAirtime(Json::Value(), Json::Value(), Json::Value(), Json::Value(), &f);
+    CHECK(at.role == "master" && at.remotes == 3 && at.copies == 2 && at.changeMs() > 419 && at.changeMs() < 421);
+    // /api/status wins over the heartbeat
+    at = parseAirtime(Json::Value(), Json::Value(), parse(R"({"group":{"role":"off"}})"), Json::Value(), &f);
+    CHECK(at.role == "off");
+
+    // firmware versions
+    CHECK(firmwareNumber("0.2.1") == 2001 && firmwareNumber("v1.12.3") == 1012003 && firmwareNumber("0.2.0-4-gab12cd-dirty") == 2000);
+    CHECK(firmwareNumber("") < 0 && firmwareNumber("ab12cd3") < 0 && firmwareNumber("0.2") < 0 && firmwareNumber("0.2.x") < 0);
+    CHECK(firmwareSupported("0.2.0") && firmwareSupported("1.0.0") && firmwareSupported("ab12cd3") && !firmwareSupported("0.1.0"));
+    Json::Value fi = checkFirmware("0.1.0");
+    CHECK(fi.size() == 1 && fi[0]["level"].asString() == "error");
+    fi = checkFirmware("0.2.0");
+    CHECK(fi.size() == 1 && fi[0]["level"].asString() == "info" && fi[0]["text"].asString().find("0.2.1") != std::string::npos);
+    CHECK(checkFirmware("0.2.1").size() == 0 && checkFirmware("0.3.0-2-gabc").size() == 0);
+    for (const char* dev : { "0.0.0-dev", "ab12cd3" }) {   // untagged builds: can't be checked, not an error
+        fi = checkFirmware(dev);
+        CHECK(fi[0]["level"].asString() == "info" && fi[0]["text"].asString().find("development build") != std::string::npos);
+    }
+
     printf(fails ? "%d FAILED\n" : "all passed\n", fails);
     return fails ? 1 : 0;
 }

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace n2r {
@@ -262,6 +263,18 @@ struct Gate {
         return out;
     }
 };
+
+// The runs of consecutive enabled zones, as {first, count}: direct mode sends one DDP packet per run, so the
+// controller's disabled zones get nothing and hold their last colour.
+inline std::vector<std::pair<size_t, size_t>> enabledRuns(const std::vector<bool>& on) {
+    std::vector<std::pair<size_t, size_t>> runs;
+    for (size_t i = 0; i < on.size(); i++) {
+        if (!on[i]) continue;
+        if (!runs.empty() && runs.back().first + runs.back().second == i) runs.back().second++;
+        else runs.push_back({ i, 1 });
+    }
+    return runs;
+}
 
 // DDP data packet (http://www.3waylabs.com/ddp/): version 1, PUSH, destination 1 (display), RGB 8-bit.
 inline std::vector<uint8_t> ddpPacket(uint8_t seq, uint32_t offset, const std::vector<RGB>& colours) {

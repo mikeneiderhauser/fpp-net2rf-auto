@@ -10,6 +10,7 @@
 //                      controller's xLights model, and what the controller must then be set to
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -21,6 +22,7 @@ struct Found {
     int zones = 0, air = 0;   // air: % of the last 10 s spent transmitting
     bool output = true, test = false;
     bool sync = false, master = false;   // in a coverage group, and leading it
+    int repeats = 0, remotes = 0, copies = 0;   // radio budget (firmware 0.2.1+; 0 = not sent)
     long long lastSeenMs = 0;
 };
 
@@ -39,6 +41,9 @@ inline bool parseHeartbeat(const Json::Value& j, const std::string& ip, long lon
     f.air = j.get("air", 0).asInt();
     f.sync = j.get("sync", false).asBool();
     f.master = f.sync && j.get("master", false).asBool();
+    f.repeats = j.get("rep", 0).asInt();
+    f.remotes = f.master ? j.get("rem", 0).asInt() : 0;
+    f.copies = f.master ? j.get("cp", 0).asInt() : 0;
     f.ip = ip;
     f.lastSeenMs = nowMs;
     return true;
@@ -172,7 +177,8 @@ inline Json::Value checkController(const Json::Value& appCfg, const Json::Value&
         return out;
     }
     if (!app.isObject())
-        add("info", "the controller has an admin password, so only its open endpoints were checked (DDP on/off and colour order unknown)");
+        add("info", "the controller has an admin password, so only its open endpoints were checked (DDP on/off and colour order unknown): "
+                    "enter it under Controller Password for the full check and the controller commands");
 
     // role
     std::string role = app.isObject() ? app.get("role", "controller").asString()
@@ -243,6 +249,62 @@ inline Json::Value checkController(const Json::Value& appCfg, const Json::Value&
     return out;
 }
 
+// ------------------------------------------------------------------ firmware version
+
+// The oldest firmware the plugin works with (the endpoints and fields above), and the first that reports its radio
+// budget in the heartbeat and /api/stats.
+static const char* MIN_FIRMWARE = "0.2.0";
+static const char* BUDGET_FIRMWARE = "0.2.1";
+
+// "0.2.1", "v0.2.1" or a git describe of a build past a tag ("0.2.1-3-gabc123-dirty", which counts as 0.2.1) ->
+// major * 1000000 + minor * 1000 + patch. -1 when there is no version number (a build from an untagged checkout,
+// "ab12cd3" or "0.0.0-dev").
+inline long firmwareNumber(const std::string& fw) {
+    size_t i = (!fw.empty() && (fw[0] == 'v' || fw[0] == 'V')) ? 1 : 0;
+    long parts[3] = { 0, 0, 0 };
+    for (int k = 0; k < 3; k++) {
+        if (i >= fw.size() || !isdigit((unsigned char)fw[i])) return -1;
+        long v = 0;
+        while (i < fw.size() && isdigit((unsigned char)fw[i]) && v < 1000) v = v * 10 + (fw[i++] - '0');
+        if (v >= 1000) return -1;
+        parts[k] = v;
+        if (k < 2 && (i >= fw.size() || fw[i++] != '.')) return -1;
+    }
+    if (i < fw.size() && fw[i] != '-' && fw[i] != '+') return -1;
+    long n = parts[0] * 1000000 + parts[1] * 1000 + parts[2];
+    return n > 0 ? n : -1;   // 0.0.0(-dev): the firmware's own fallback for a build with no tag
+}
+
+// False only for a version known to be older than MIN_FIRMWARE; an unknown one is given the benefit of the doubt.
+inline bool firmwareSupported(const std::string& fw) {
+    long n = firmwareNumber(fw);
+    return n < 0 || n >= firmwareNumber(MIN_FIRMWARE);
+}
+
+// The setup check's firmware lines. Too old is an error: the check's other findings and the radio budget can't be
+// trusted, though the plugin still sends (stopping mid-show would be worse).
+inline Json::Value checkFirmware(const std::string& fw) {
+    Json::Value items(Json::arrayValue);
+    auto add = [&](const char* level, const std::string& text) {
+        Json::Value it;
+        it["level"] = level;
+        it["text"] = text;
+        items.append(it);
+    };
+    long n = firmwareNumber(fw);
+    if (fw.empty())
+        add("info", "the controller's firmware version is unknown");
+    else if (n < 0)
+        add("info", "firmware " + fw + " is a development build: it can't be checked against the " + MIN_FIRMWARE + " the plugin needs");
+    else if (n < firmwareNumber(MIN_FIRMWARE))
+        add("error", "firmware " + fw + " is older than " + MIN_FIRMWARE + ", the oldest the plugin works with: update the controller. "
+                     "The checks below and the automatic rate may be wrong until then");
+    else if (n < firmwareNumber(BUDGET_FIRMWARE))
+        add("info", std::string("firmware ") + BUDGET_FIRMWARE + " or later reports its repeats and coverage group in its broadcast: "
+                    "the rate then follows them within seconds, and the repeats can be read behind an admin password");
+    return items;
+}
+
 // ------------------------------------------------------------------ radio budget
 
 // How long one colour change keeps the radio busy, from the controller's own settings (net2rf-led
@@ -270,13 +332,22 @@ struct Airtime {
     double changesPerSec(int airtimePct) const { return std::clamp(airtimePct / 100.0 * 1000.0 / changeMs(), 0.2, 50.0); }
 };
 
-// appCfg: GET /api/config (null behind an admin password), tools: GET /api/tools, status: GET /api/status. Any may
-// be null; what's missing keeps its default. Without /api/config the repeats come from the last show transmission
-// in /api/tools (`n`), which is the repeat count outside a group.
-inline Airtime parseAirtime(const Json::Value& appCfg, const Json::Value& tools, const Json::Value& status) {
+// appCfg: GET /api/config (null behind an admin password), tools: GET /api/tools, status: GET /api/status, stats:
+// GET /api/stats, hb: the controller's last heartbeat (null if not heard). Any may be missing; what's missing keeps
+// its default. Repeats: the settings, else /api/stats and the heartbeat (0.2.1+), else the last show transmission in
+// /api/tools (`n`, the repeat count outside a group). Group: /api/status (with the last plan's guard and lead), else
+// the heartbeat.
+inline Airtime parseAirtime(const Json::Value& appCfg, const Json::Value& tools, const Json::Value& status,
+                            const Json::Value& stats = Json::Value(), const Found* hb = nullptr) {
     Airtime a;
     const Json::Value app = appCfg.isObject() && appCfg.isMember("app") ? appCfg["app"] : Json::Value();
     const Json::Value g = status.isObject() ? status["group"] : Json::Value();
+    if (!g.isObject() && hb && hb->sync) {
+        a.known = true;
+        a.role = hb->master ? "master" : "remote";
+        a.remotes = hb->remotes;
+        if (hb->copies > 0) a.copies = hb->copies;
+    }
     if (g.isObject()) {
         a.known = true;
         a.role = g.get("role", "off").asString();
@@ -300,6 +371,12 @@ inline Airtime parseAirtime(const Json::Value& appCfg, const Json::Value& tools,
         if (!g["last_plan"].isObject()) a.copies = std::clamp(app["sync"].get("copies", a.copies).asInt(), 1, 3);
         for (auto& z : app["zones"])
             if (z.get("enabled", true).asBool() && z["protocols"].isArray() && z["protocols"].size() > 1) a.protocols = 2;
+    } else if (stats.isObject() && stats.get("repeats", 0).asInt() > 0) {
+        a.known = true;
+        a.repeats = stats["repeats"].asInt();
+    } else if (hb && hb->repeats > 0) {
+        a.known = true;
+        a.repeats = hb->repeats;
     } else if (tools.isObject() && a.role != "master") {
         for (auto& t : tools["tx"])
             if (!t.get("manual", false).asBool() && t.isMember("n")) {

@@ -1,0 +1,56 @@
+{
+    "paths": {
+        "/net2rf/config": {
+            "get": {
+                "summary": "Net2RF Auto Mode settings",
+                "description": "The plugin's settings, as stored in config/plugin.fpp-net2rf.json: enabled, connection (model or direct), the controller model or host, timing and rate, and the zones with their props.",
+                "responses": { "200": { "description": "The settings (JSON object)" } }
+            },
+            "post": {
+                "summary": "Replace the Net2RF Auto Mode settings",
+                "description": "Takes the same JSON object GET returns, saves it and applies it at once. Changes what the Net2RF controller is sent, and so what its devices show.",
+                "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+                "responses": {
+                    "200": { "description": "{\"ok\": true, \"config\": {...}}: the settings as saved" },
+                    "400": { "description": "The body is not a JSON object" }
+                }
+            }
+        },
+        "/net2rf/password": {
+            "post": {
+                "summary": "Set the Net2RF controller's admin password",
+                "description": "{\"controllerPassword\": \"...\"}; an empty string clears it. Used for the full setup check and the controller commands. Kept in plugindata/fpp-net2rf/ (mode 0600) and never returned by any route.",
+                "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+                "responses": {
+                    "200": { "description": "{\"ok\": bool, \"set\": bool}" },
+                    "400": { "description": "No controllerPassword string in the body" }
+                }
+            }
+        },
+        "/net2rf/status": {
+            "get": {
+                "summary": "Net2RF Auto Mode live status",
+                "description": "Whether it is enabled and running, where it sends, the rate in use, counters (changes sent, held back, packets, send errors), the last setup check, and per zone its state and colours (props, smoothed, sent).",
+                "responses": { "200": { "description": "Status (JSON object)" } }
+            }
+        },
+        "/net2rf/discover": {
+            "get": {
+                "summary": "Net2RF controllers heard on the network",
+                "description": "Controllers whose UDP 4049 status broadcasts were heard (same subnet). The plugin listens only while it is enabled or its settings page is open.",
+                "responses": { "200": { "description": "{\"listening\": bool, \"error\": string, \"controllers\": [...]}" } }
+            }
+        },
+        "/net2rf/check": {
+            "get": {
+                "summary": "Last Net2RF setup check",
+                "responses": { "200": { "description": "The last check: items with level (ok, info, warn, error) and text" } }
+            },
+            "post": {
+                "summary": "Run the Net2RF setup check now",
+                "description": "Reads the controller's settings and status over HTTP and compares them with the plugin's. The result appears in /net2rf/status a moment later.",
+                "responses": { "200": { "description": "The previous check result" } }
+            }
+        }
+    }
+}

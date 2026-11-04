@@ -1,12 +1,13 @@
 {
     "repoName": "fpp-net2rf",
-    "name": "Net2RF Bracelet Follow",
+    "name": "Net2RF Auto Mode",
     "author": "Mike Neiderhauser",
-    "description": "Drives a Net2RF bracelet controller from the colours of your other props: each controller zone follows one or more FPP models (average, dominant, brightest or one pixel), smoothed and rate-limited to suit the radio, sent over DDP.",
+    "description": "Colours a Net2RF controller's zones from your other props while a sequence plays: each zone follows one or more FPP models (average, dominant, brightest or one pixel), smoothed and rate-limited to suit the radio. It talks only to the Net2RF controller you set, on your own network: the zone colours over DDP (or through FPP's own output to it), and HTTP requests for the controller's settings for its setup check. The controller broadcasts the colours on 433 MHz, unencrypted, to any compatible device in range.",
     "homeURL": "https://github.com/mikeneiderhauser/fpp-net2rf",
     "srcURL": "https://github.com/mikeneiderhauser/fpp-net2rf.git",
     "bugURL": "https://github.com/mikeneiderhauser/fpp-net2rf/issues",
     "allowUpdates": 1,
+    "dependencies": {},
     "versions": [
         {
             "minFPPVersion": "10.3",
@@ -16,20 +17,31 @@
         }
     ],
     "privacy": {
-        "summary": "Sends colour data (DDP) to the one Net2RF controller you set, on your network. Nothing else leaves this device.",
+        "summary": "Talks only to the one Net2RF controller you set, on your network: zone colours over DDP and requests for its settings. Off until you enable it or open its page.",
         "sends": [
             {
-                "to": "the Net2RF controller address you enter",
-                "what": "the zone colours, as DDP packets",
+                "to": "the Net2RF controller you set",
+                "what": "the zone colours, as DDP packets (direct connection)",
                 "why": "that is how the controller is driven",
+                "alwaysOn": false
+            },
+            {
+                "to": "http://the Net2RF controller you set",
+                "what": "settings and status requests, your commands, and its admin password if you set one",
+                "why": "the setup check, the radio rate, and the controller commands",
                 "alwaysOn": false
             }
         ],
         "collects": [],
         "sensors": [],
         "remoteAccess": "none",
-        "systemChanges": [],
+        "systemChanges": [
+            {
+                "kind": "network",
+                "what": "Listens (receive only) for Net2RF controllers' status broadcasts on UDP port 4049, while enabled or while its settings page is open"
+            }
+        ],
         "closedCode": false,
-        "other": "Settings are kept in config/plugin.fpp-net2rf.json under /home/fpp/media and are not removed on uninstall."
+        "other": "The controller re-broadcasts the zone colours on 433 MHz, unencrypted: any compatible wristband or prop in range shows them. Its API is served through FPP's web server, so anyone who can open this player's FPP pages can change its settings, and so what the controller broadcasts, the same as FPP itself. Its FPP commands act on the controller: Net2RF All Off switches every device off, Net2RF RF Output turns the radio on or off, and Net2RF Color - Test Mode overrides the show; anyone who can run FPP commands can run them. The controller's admin password, if you enter one, is kept in plugindata/fpp-net2rf/ (mode 0600), never shown again or logged, and sent to the controller as HTTP Basic auth, unencrypted, on your network. It writes an activity log (logs/plugin-fpp-net2rf.log): settings saves, commands and their results. Its settings (config/plugin.fpp-net2rf.json) and the password stay after uninstall; see the README to remove them."
     }
 }

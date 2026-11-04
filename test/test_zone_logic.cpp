@@ -114,6 +114,13 @@ int main() {
     CHECK(toHex({ 255, 16, 1 }) == "FF1001");
     CHECK(modeFromString("dominant") == Mode::Dominant && modeFromString("x") == Mode::Average);
 
+    // per-zone on/off: one DDP packet per run of zones that are on
+    auto runs = enabledRuns({ true, true, false, true, false, false, true, true });
+    CHECK(runs.size() == 3 && runs[0] == std::make_pair((size_t)0, (size_t)2) && runs[1] == std::make_pair((size_t)3, (size_t)1) &&
+          runs[2] == std::make_pair((size_t)6, (size_t)2));
+    CHECK(enabledRuns({ false, false }).empty() && enabledRuns({}).empty());
+    CHECK(enabledRuns({ true, true, true }).size() == 1);
+
     printf(fails ? "%d FAILED\n" : "all passed\n", fails);
     return fails ? 1 : 0;
 }
