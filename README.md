@@ -149,3 +149,9 @@ The routes are documented on FPP's own API page too (`apiDocs.json`).
     through `/api/channel/output/universeOutputs`), one listens for heartbeats. Both stay off the network while the
     plugin is disabled and its page is closed.
 - `net2rf.php`: the settings page, with live swatches for each zone.
+
+## License
+
+GPL-3.0 (see [LICENSE](LICENSE)), like [net2rf-led](https://github.com/mikeneiderhauser/net2rf-led) and
+[fpp-matrixscroller](https://github.com/mikeneiderhauser/fpp-matrixscroller). It links against FPP, which is GPL v2 or
+later with an exception for plugins.

@@ -7,6 +7,7 @@
     "srcURL": "https://github.com/mikeneiderhauser/fpp-net2rf.git",
     "bugURL": "https://github.com/mikeneiderhauser/fpp-net2rf/issues",
     "allowUpdates": 1,
+    "releaseNotesStyle": "gitHistory",
     "dependencies": {},
     "versions": [
         {
