@@ -102,7 +102,7 @@ select.form-select-sm { padding-top: 0.25rem !important; padding-bottom: 0.25rem
         <div class="col-md-6 d-flex align-items-end">
           <p class="text-muted small mb-0">The controller's admin password, if it has one: the full setup check and the
             controller commands (All Off, RF Output, Color - Test Mode) need it. Kept on this player in
-            plugindata/fpp-net2rf/, never shown again, and sent to the controller as HTTP Basic auth, which isn't
+            plugindata/fpp-net2rf-auto/, never shown again, and sent to the controller as HTTP Basic auth, which isn't
             encrypted: only use it on your own network.</p>
         </div>
       </div>
@@ -171,7 +171,7 @@ select.form-select-sm { padding-top: 0.25rem !important; padding-bottom: 0.25rem
     <button class="btn btn-outline-secondary" onclick="n2rLoad()">&#8635; Reload</button>
   </div>
 
-  <div class="text-end text-muted mt-2" style="font-size:0.72em;">fpp-net2rf</div>
+  <div class="text-end text-muted mt-2" style="font-size:0.72em;">fpp-net2rf-auto</div>
 </div>
 
 <!-- Toast -->

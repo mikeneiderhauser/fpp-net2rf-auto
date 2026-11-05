@@ -10,7 +10,7 @@ $menuEntries = Array(
 	Array(
 		'text' => 'Net2RF Auto Mode - Home',
 		'type' => 'help',
-		'page' => 'https://github.com/mikeneiderhauser/fpp-net2rf',
+		'page' => 'https://github.com/mikeneiderhauser/fpp-net2rf-auto',
 		'wrap' => 1
 	)
 );

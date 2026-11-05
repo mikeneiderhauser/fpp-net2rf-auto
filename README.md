@@ -1,4 +1,4 @@
-# fpp-net2rf: Net2RF Auto Mode
+# fpp-net2rf-auto: Net2RF Auto Mode
 
 An FPP 10.3+ plugin that drives a [Net2RF](https://github.com/mikeneiderhauser/net2rf-led) bracelet controller from
 the colours of your other props, with no bracelet sequencing.
@@ -45,7 +45,7 @@ address) and work whether or not the plugin is enabled. They're sent in the back
 on the network; the result shows under the setup check (*Last controller command*) and in the plugin log. With a
 controller that has an admin password, enter it under **Controller Password** first, otherwise they're refused.
 
-The password is kept in `plugindata/fpp-net2rf/controller.json` (mode 0600), not with the settings: FPP's backups
+The password is kept in `plugindata/fpp-net2rf-auto/controller.json` (mode 0600), not with the settings: FPP's backups
 and crash reports copy `config/`. It is never shown again or logged, and it goes to the controller as HTTP Basic
 auth, which isn't encrypted, so use it only on your own network.
 
@@ -109,7 +109,7 @@ The settings page is under **Content Setup → Net2RF Auto Mode**.
 While disabled, the plugin doesn't touch the network: it listens for controller broadcasts and runs the setup check
 only while it is enabled or its settings page is open (and for 2 minutes after the page was last open).
 
-Runtime messages (settings saves, Enable/Disable commands, errors) go to `logs/plugin-fpp-net2rf.log`, which FPP
+Runtime messages (settings saves, Enable/Disable commands, errors) go to `logs/plugin-fpp-net2rf-auto.log`, which FPP
 rotates with its other plugin logs.
 
 ### Uninstalling
@@ -119,9 +119,9 @@ FPP's **Reinstall All** after an OS upgrade, which on FPP 10.3 and earlier can't
 picks them up again. To remove them too, delete them after uninstalling:
 
 ```bash
-rm -f /home/fpp/media/config/plugin.fpp-net2rf.json
-rm -f /home/fpp/media/logs/plugin-fpp-net2rf.log*
-rm -rf /home/fpp/media/plugindata/fpp-net2rf    # the controller password, if you set one
+rm -f /home/fpp/media/config/plugin.fpp-net2rf-auto.json
+rm -f /home/fpp/media/logs/plugin-fpp-net2rf-auto.log*
+rm -rf /home/fpp/media/plugindata/fpp-net2rf-auto    # the controller password, if you set one
 ```
 
 ## API
@@ -130,7 +130,7 @@ The routes are documented on FPP's own API page too (`apiDocs.json`).
 
 
 - `GET /api/plugin-apis/net2rf/config`, `POST` the same to replace it. It's stored in
-  `config/plugin.fpp-net2rf.json`.
+  `config/plugin.fpp-net2rf-auto.json`.
 - `GET /api/plugin-apis/net2rf/status`: per zone, the prop colour, the smoothed colour and the colour last sent, plus
   counters (changes, deferred, packets, send errors), the rate in use (`rate`, `changeMs`) and the last setup check.
 - `GET /api/plugin-apis/net2rf/discover`: controllers heard on the network.

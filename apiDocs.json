@@ -3,7 +3,7 @@
         "/net2rf/config": {
             "get": {
                 "summary": "Net2RF Auto Mode settings",
-                "description": "The plugin's settings, as stored in config/plugin.fpp-net2rf.json: enabled, connection (model or direct), the controller model or host, timing and rate, and the zones with their props.",
+                "description": "The plugin's settings, as stored in config/plugin.fpp-net2rf-auto.json: enabled, connection (model or direct), the controller model or host, timing and rate, and the zones with their props.",
                 "responses": { "200": { "description": "The settings (JSON object)" } }
             },
             "post": {
@@ -19,7 +19,7 @@
         "/net2rf/password": {
             "post": {
                 "summary": "Set the Net2RF controller's admin password",
-                "description": "{\"controllerPassword\": \"...\"}; an empty string clears it. Used for the full setup check and the controller commands. Kept in plugindata/fpp-net2rf/ (mode 0600) and never returned by any route.",
+                "description": "{\"controllerPassword\": \"...\"}; an empty string clears it. Used for the full setup check and the controller commands. Kept in plugindata/fpp-net2rf-auto/ (mode 0600) and never returned by any route.",
                 "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
                 "responses": {
                     "200": { "description": "{\"ok\": bool, \"set\": bool}" },

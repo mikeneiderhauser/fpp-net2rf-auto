@@ -6,7 +6,7 @@ BASEDIR=$(dirname $0)
 cd $BASEDIR
 cd ..
 
-if [ ! -f libfpp-net2rf.so ]; then
-    echo "fpp-net2rf: libfpp-net2rf.so is missing, rebuilding"
+if [ ! -f libfpp-net2rf-auto.so ]; then
+    echo "fpp-net2rf-auto: libfpp-net2rf-auto.so is missing, rebuilding"
     make "SRCDIR=${SRCDIR}"
 fi

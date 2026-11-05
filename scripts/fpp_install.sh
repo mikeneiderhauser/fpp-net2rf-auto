@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# fpp-net2rf install script: build the plugin against this FPP's headers.
+# fpp-net2rf-auto install script: build the plugin against this FPP's headers.
 BASEDIR=$(dirname $0)
 cd $BASEDIR
 cd ..

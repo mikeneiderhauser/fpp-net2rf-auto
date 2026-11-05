@@ -1,4 +1,4 @@
-// fpp-net2rf: drives a Net2RF bracelet controller from the colours of other props.
+// fpp-net2rf-auto: drives a Net2RF bracelet controller from the colours of other props.
 //
 // Each zone of the controller follows one or more FPP models: every frame while a sequence plays, after overlays and just before the
 // outputs are sent (modifyChannelData), the zone's colour is reduced from those models' channel data, smoothed,
@@ -9,7 +9,7 @@
 //           with no props keep whatever the sequence has there.
 //   direct  the controller is not in the layout: the plugin sends the zones as its own DDP packet to `host`.
 //
-// Config: config/plugin.fpp-net2rf.json, edited from the plugin page through /api/plugin-apis/net2rf/config.
+// Config: config/plugin.fpp-net2rf-auto.json, edited from the plugin page through /api/plugin-apis/net2rf/config.
 //
 // Two background threads, both joined in shutdown():
 //   host:       every 30 s (or on demand) finds the controller (the model's FPP output, or `host`), then runs the
@@ -18,7 +18,7 @@
 //   discovery:  listens for the controllers' UDP 4049 heartbeats, for the page's "found on the network" list
 //
 // Both touch the network only while the plugin is enabled or its settings page is open (networkWanted()), so a
-// disabled plugin neither listens nor sends. Runtime messages go to logs/plugin-fpp-net2rf.log (pluginLog()).
+// disabled plugin neither listens nor sends. Runtime messages go to logs/plugin-fpp-net2rf-auto.log (pluginLog()).
 
 #include <fpp-pch.h>
 
@@ -73,7 +73,7 @@ static const int BLANK_AFTER_MS = 3000;     // direct: blank the zones this long
 static const int PAGE_OPEN_MS = 120000;     // while disabled, discovery and the setup check run only this long after
                                             // the settings page (or anything else) last called the plugin's API
 
-// The plugin's one log file, logs/plugin-fpp-net2rf.log. Opened for each line, so it follows FPP's rotation of
+// The plugin's one log file, logs/plugin-fpp-net2rf-auto.log. Opened for each line, so it follows FPP's rotation of
 // plugin logs (the old file is renamed, not emptied).
 static std::mutex logLock;
 static void pluginLog(const char* fmt, ...) {
@@ -86,7 +86,7 @@ static void pluginLog(const char* fmt, ...) {
     char when[32];
     strftime(when, sizeof(when), "%Y-%m-%d %H:%M:%S", localtime(&t));
     std::lock_guard<std::mutex> l(logLock);
-    FILE* f = fopen(getFPPMediaDir("/logs/plugin-fpp-net2rf.log").c_str(), "a");
+    FILE* f = fopen(getFPPMediaDir("/logs/plugin-fpp-net2rf-auto.log").c_str(), "a");
     if (!f) return;
     fprintf(f, "%s %s\n", when, msg);
     fclose(f);
@@ -327,8 +327,9 @@ struct Action {
 class Net2RFPlugin : public FPPPlugins::Plugin, public FPPPlugins::ChannelDataPlugin, public FPPPlugins::APIProviderPlugin {
 public:
     Net2RFPlugin() :
-        FPPPlugins::Plugin("fpp-net2rf") {
-        configPath = FPP_DIR_CONFIG("/plugin.fpp-net2rf.json");
+        FPPPlugins::Plugin("fpp-net2rf-auto") {
+        configPath = FPP_DIR_CONFIG("/plugin.fpp-net2rf-auto.json");
+        migrateOldName();
         Json::Value j;
         if (FileExists(configPath) && LoadJsonFromFile(configPath, j)) applyConfig(configFromJson(j));
         ctrlPassword = loadPassword();
@@ -676,9 +677,21 @@ private:
         return "sending to the controller: " + what;
     }
 
-    // The controller's admin password lives in plugindata/fpp-net2rf/controller.json, mode 0600: never in config/
+    // The plugin was first called fpp-net2rf: settings and the controller password saved under that name move to the
+    // new names the first time it starts (only when nothing is there under the new name yet).
+    void migrateOldName() {
+        std::string oldCfg = FPP_DIR_CONFIG("/plugin.fpp-net2rf.json");
+        if (!FileExists(configPath) && FileExists(oldCfg) && rename(oldCfg.c_str(), configPath.c_str()) == 0)
+            pluginLog("settings moved from %s", oldCfg.c_str());
+        std::string oldData = getFPPMediaDir("/plugindata/fpp-net2rf"), newData = getFPPMediaDir("/plugindata/fpp-net2rf-auto");
+        struct stat st;
+        if (stat(newData.c_str(), &st) != 0 && stat(oldData.c_str(), &st) == 0 && rename(oldData.c_str(), newData.c_str()) == 0)
+            pluginLog("controller password moved from %s", oldData.c_str());
+    }
+
+    // The controller's admin password lives in plugindata/fpp-net2rf-auto/controller.json, mode 0600: never in config/
     // (FPP's backups and crash bundles copy that), never in the log, and never sent back by the API.
-    static std::string passwordPath() { return getFPPMediaDir("/plugindata/fpp-net2rf/controller.json"); }
+    static std::string passwordPath() { return getFPPMediaDir("/plugindata/fpp-net2rf-auto/controller.json"); }
     static std::string loadPassword() {
         Json::Value j;
         if (FileExists(passwordPath()) && LoadJsonFromFile(passwordPath(), j)) return j.get("controllerPassword", "").asString();
@@ -688,7 +701,7 @@ private:
         std::string path = passwordPath();
         if (pw.empty()) return unlink(path.c_str()) == 0 || errno == ENOENT;
         mkdir(getFPPMediaDir("/plugindata").c_str(), 0755);
-        mkdir(getFPPMediaDir("/plugindata/fpp-net2rf").c_str(), 0700);
+        mkdir(getFPPMediaDir("/plugindata/fpp-net2rf-auto").c_str(), 0700);
         Json::Value j;
         j["controllerPassword"] = pw;
         std::string text = SaveJsonToString(j);
