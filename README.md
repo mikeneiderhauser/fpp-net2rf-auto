@@ -1,7 +1,9 @@
 # fpp-net2rf-auto: Net2RF Auto Mode
 
-An FPP 10.3+ plugin that drives a [Net2RF](https://github.com/mikeneiderhauser/net2rf-led) bracelet controller from
-the colours of your other props, with no bracelet sequencing.
+An FPP 10.3+ plugin that drives a [Net2RF](https://github.com/mikeneiderhauser/net2rf-led) controller from the
+colours of your other props, with no sequencing of its own.
+
+**New here?** [Installing and setting up](docs/install.md) walks through it, step by step.
 
 Each controller zone follows one or more FPP models. Every frame while a sequence plays, after overlays and just
 before outputs are sent, the plugin does the following for each zone that is on and has props:
@@ -104,7 +106,8 @@ when there's no admin password, `/json/cfg`, `/api/tools`, `/api/stats`) and lis
 ## Install
 
 In FPP's Plugin Manager, install from the repo URL. It builds on the player (`make`) against that FPP's headers.
-The settings page is under **Content Setup → Net2RF Auto Mode**.
+The settings page is under **Content Setup → Net2RF Auto Mode**. Step by step, from installing to setting up
+the zones: [docs/install.md](docs/install.md).
 
 While disabled, the plugin doesn't touch the network: it listens for controller broadcasts and runs the setup check
 only while it is enabled or its settings page is open (and for 2 minutes after the page was last open).
