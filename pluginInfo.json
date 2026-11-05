@@ -6,6 +6,7 @@
     "homeURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto",
     "srcURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto.git",
     "bugURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto/issues",
+    "iconURL": "https://raw.githubusercontent.com/mikeneiderhauser/fpp-net2rf-auto/master/icon.png",
     "allowUpdates": 1,
     "releaseNotesStyle": "gitHistory",
     "dependencies": {},
