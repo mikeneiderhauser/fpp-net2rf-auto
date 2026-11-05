@@ -2,7 +2,7 @@
     "repoName": "fpp-net2rf-auto",
     "name": "Net2RF Auto Mode",
     "author": "Mike Neiderhauser",
-    "description": "Colours a Net2RF controller's zones from your other props while a sequence plays: each zone follows one or more FPP models (average, dominant, brightest or one pixel), smoothed and rate-limited to suit the radio. It talks only to the Net2RF controller you set, on your own network: the zone colours over DDP (or through FPP's own output to it), and HTTP requests for the controller's settings for its setup check. The controller broadcasts the colours on 433 MHz, unencrypted, to any compatible device in range.",
+    "description": "Colours a Net2RF controller's zones from your other props while a sequence plays, paced to suit its radio. Talks only to the Net2RF controller you set, on your own network; the controller broadcasts the colours on 433 MHz, unencrypted.",
     "homeURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto",
     "srcURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto.git",
     "bugURL": "https://github.com/mikeneiderhauser/fpp-net2rf-auto/issues",
